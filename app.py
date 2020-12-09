@@ -10,7 +10,9 @@ import json
 
 import plotly.express as px
 
-app = dash.Dash()
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+server = app.server
 
 df=pd.read_csv('county/countypres_2000-2016.csv')
 # drop where FIPS is NaN
@@ -28,21 +30,18 @@ df['percent']=df['candidatevotes']/df['totalvotes']
 by_year=df.groupby('year')
 year_dict={}
 for key in by_year.groups.keys():
-    yr=by_year.get_group(key).pivot(index=['state_po','county','FIPS'], columns='party', values='percent')
+    yr=by_year.get_group(key).pivot_table(index=['state_po','county','FIPS'], columns='party', values='percent')
     yr['diff']=round((yr['democrat']-yr['republican'])*100, 1)
     yr=yr.reset_index()
-    yr['text']=yr['county'] + ', ' + yr['state_po']
+    yr['text']=yr['county'] + ' County, ' + yr['state_po']
     year_dict.update({key: yr})
 
 # Here we load a GeoJSON file containing the geometry information for US counties, 
 # where feature.id is a FIPS code.
-from urllib.request import urlopen
-import json
 with urlopen('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json') as response:
     counties = json.load(response)
 
 # application
-
 states=df['state_po'].unique()
 states=np.insert(states, 0, 'All')
 
@@ -110,4 +109,5 @@ def update_graph(year_value, state_value):
 
     return fig
 
-app.run_server(debug=True, use_reloader=False)
+if __name__ == '__main__':
+    app.run_server(debug=True)
